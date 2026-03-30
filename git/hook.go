@@ -28,7 +28,7 @@ func FindRepoRoot(startDir string) (string, error) {
 	}
 	for {
 		candidate := filepath.Join(dir, ".git")
-		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+		if _, err := resolveGitDirFromDotGitPath(candidate); err == nil {
 			return dir, nil
 		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("stat %s: %w", candidate, err)
@@ -42,14 +42,43 @@ func FindRepoRoot(startDir string) (string, error) {
 	}
 }
 
+// GitDir returns the resolved Git directory for the repo root.
+func GitDir(repoRoot string) (string, error) {
+	gitDir, err := resolveGitDirFromDotGitPath(filepath.Join(repoRoot, ".git"))
+	if err != nil {
+		return "", fmt.Errorf("resolve git dir for %s: %w", repoRoot, err)
+	}
+	return gitDir, nil
+}
+
 // HookPath returns the pre-commit hook path for the repo.
-func HookPath(repoRoot string) string {
-	return filepath.Join(repoRoot, ".git", "hooks", "pre-commit")
+func HookPath(repoRoot string) (string, error) {
+	commonGitDir, err := CommonGitDir(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve common git dir for %s: %w", repoRoot, err)
+	}
+	return filepath.Join(commonGitDir, "hooks", "pre-commit"), nil
+}
+
+// CommonGitDir returns the common Git directory used for shared repo data such as hooks.
+func CommonGitDir(repoRoot string) (string, error) {
+	gitDir, err := GitDir(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve git dir for %s: %w", repoRoot, err)
+	}
+	commonGitDir, err := resolveCommonGitDir(gitDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve common git dir from %s: %w", gitDir, err)
+	}
+	return commonGitDir, nil
 }
 
 // InstallHook installs or updates the envguard pre-commit hook.
 func InstallHook(repoRoot string, in io.Reader, out io.Writer, opts InstallOptions) (string, error) {
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve hook path: %w", err)
+	}
 	hookScript := buildHookScript(opts.BinaryPath)
 	existing, err := os.ReadFile(hookPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -97,7 +126,10 @@ func InstallHook(repoRoot string, in io.Reader, out io.Writer, opts InstallOptio
 
 // UninstallHook removes envguard from the pre-commit hook without disturbing foreign content.
 func UninstallHook(repoRoot string) (bool, error) {
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	if err != nil {
+		return false, fmt.Errorf("resolve hook path: %w", err)
+	}
 	data, err := os.ReadFile(hookPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -128,6 +160,72 @@ func writeHook(path string, content string) error {
 		return fmt.Errorf("write hook file %s: %w", path, err)
 	}
 	return nil
+}
+
+func resolveGitDirFromDotGitPath(dotGitPath string) (string, error) {
+	info, err := os.Stat(dotGitPath)
+	if err != nil {
+		return "", err
+	}
+	if info.IsDir() {
+		return dotGitPath, nil
+	}
+
+	data, err := os.ReadFile(dotGitPath)
+	if err != nil {
+		return "", fmt.Errorf("read git file %s: %w", dotGitPath, err)
+	}
+	content := strings.TrimSpace(string(data))
+	const prefix = "gitdir:"
+	if !strings.HasPrefix(strings.ToLower(content), prefix) {
+		return "", fmt.Errorf("parse git file %s: unsupported format", dotGitPath)
+	}
+	gitDir := strings.TrimSpace(content[len(prefix):])
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(filepath.Dir(dotGitPath), gitDir)
+	}
+	gitDir, err = filepath.Abs(gitDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve git dir %s: %w", gitDir, err)
+	}
+	info, err = os.Stat(gitDir)
+	if err != nil {
+		return "", fmt.Errorf("stat git dir %s: %w", gitDir, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("git dir %s is not a directory", gitDir)
+	}
+	return gitDir, nil
+}
+
+func resolveCommonGitDir(gitDir string) (string, error) {
+	commonDirPath := filepath.Join(gitDir, "commondir")
+	data, err := os.ReadFile(commonDirPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return gitDir, nil
+		}
+		return "", fmt.Errorf("read commondir %s: %w", commonDirPath, err)
+	}
+	commonDir := strings.TrimSpace(string(data))
+	if commonDir == "" {
+		return "", fmt.Errorf("parse commondir %s: empty path", commonDirPath)
+	}
+	if !filepath.IsAbs(commonDir) {
+		commonDir = filepath.Join(gitDir, commonDir)
+	}
+	commonDir, err = filepath.Abs(commonDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve common git dir %s: %w", commonDir, err)
+	}
+	info, err := os.Stat(commonDir)
+	if err != nil {
+		return "", fmt.Errorf("stat common git dir %s: %w", commonDir, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("common git dir %s is not a directory", commonDir)
+	}
+	return commonDir, nil
 }
 
 func buildHookScript(binaryPath string) string {
