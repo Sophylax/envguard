@@ -162,10 +162,12 @@ The `.envguard-ignore` file is newline-separated and intended to be committed so
 
 ## Contributing
 
-1. Fork the repo.
-2. Run `make test`.
-3. Add or update tests with your changes.
-4. Open a pull request with a clear description and conventional commit title when possible.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding expectations, test requirements, and pull request guidance.
+
+Project policies:
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
 
 ## License
 
