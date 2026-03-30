@@ -133,10 +133,10 @@ func writeHook(path string, content string) error {
 func buildHookScript(binaryPath string) string {
 	return fmt.Sprintf(`%s
 ENVGUARD_BIN=%s
-if [ -n "$ENVGUARD_BIN" ] && [ -x "$ENVGUARD_BIN" ]; then
-  "$ENVGUARD_BIN" check
-elif command -v envguard >/dev/null 2>&1; then
+if command -v envguard >/dev/null 2>&1; then
   envguard check
+elif [ -n "$ENVGUARD_BIN" ] && [ -x "$ENVGUARD_BIN" ]; then
+  "$ENVGUARD_BIN" check
 else
   echo "envguard binary not found. Re-run 'envguard install' to refresh the hook."
   exit 1
@@ -219,19 +219,15 @@ func removeEnvguardBlock(content string) string {
 				continue
 			}
 			if strings.HasPrefix(trimmed, "ENVGUARD_BIN=") ||
-				trimmed == `if [ -n "$ENVGUARD_BIN" ] && [ -x "$ENVGUARD_BIN" ]; then` ||
-				trimmed == `"$ENVGUARD_BIN" check` ||
-				trimmed == `elif command -v envguard >/dev/null 2>&1; then` ||
+				trimmed == "if command -v envguard >/dev/null 2>&1; then" ||
 				trimmed == "envguard check" ||
+				trimmed == `elif [ -n "$ENVGUARD_BIN" ] && [ -x "$ENVGUARD_BIN" ]; then` ||
+				trimmed == `"$ENVGUARD_BIN" check` ||
 				trimmed == "else" ||
 				trimmed == `echo "envguard binary not found. Re-run 'envguard install' to refresh the hook."` ||
 				trimmed == `echo "envguard binary not found in PATH"` ||
 				trimmed == "exit 1" ||
 				trimmed == "fi" {
-				continue
-			}
-			if trimmed == "if command -v envguard >/dev/null 2>&1; then" ||
-				trimmed == "envguard check" {
 				continue
 			}
 			skip = false
