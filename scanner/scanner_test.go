@@ -88,6 +88,46 @@ func TestEnvFileDetectionCanBeAllowlisted(t *testing.T) {
 	assert.Empty(t, findings)
 }
 
+func TestEntropyExcludePathsSkipsNonTestdataFixtures(t *testing.T) {
+	tempDir := t.TempDir()
+	fixturesDir := filepath.Join(tempDir, "fixtures")
+	require.NoError(t, os.MkdirAll(fixturesDir, 0o755))
+
+	target := filepath.Join(fixturesDir, "sample.txt")
+	require.NoError(t, os.WriteFile(target, []byte("token=abcd1234efgh5678ijkl9012mnop3456\n"), 0o644))
+
+	cfg := config.Default()
+	cfg.ExcludePaths = nil
+	cfg.EntropyExcludePaths = []string{"fixtures/**"}
+
+	engine, err := NewEngineWithRoot(cfg, allowlist.Set{}, tempDir)
+	require.NoError(t, err)
+
+	findings, err := engine.ScanPaths([]string{target})
+	require.NoError(t, err)
+	assert.Empty(t, findings)
+}
+
+func TestEntropyExcludePathsCanSkipTestdataEntropy(t *testing.T) {
+	tempDir := t.TempDir()
+	testdataDir := filepath.Join(tempDir, "testdata")
+	require.NoError(t, os.MkdirAll(testdataDir, 0o755))
+
+	target := filepath.Join(testdataDir, "sample.txt")
+	require.NoError(t, os.WriteFile(target, []byte("token=abcd1234efgh5678ijkl9012mnop3456\n"), 0o644))
+
+	cfg := config.Default()
+	cfg.ExcludePaths = nil
+	cfg.EntropyExcludePaths = []string{"testdata/**"}
+
+	engine, err := NewEngineWithRoot(cfg, allowlist.Set{}, tempDir)
+	require.NoError(t, err)
+
+	findings, err := engine.ScanPaths([]string{target})
+	require.NoError(t, err)
+	assert.Empty(t, findings)
+}
+
 func chdirForTest(t *testing.T, dir string) {
 	t.Helper()
 	wd, err := os.Getwd()

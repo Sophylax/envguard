@@ -69,8 +69,8 @@ The entropy engine tokenizes each scanned line, measures Shannon entropy, and fl
 | `max_file_size_kb` | `int` | `500` | Skip files larger than this limit with a warning. |
 | `exclude_paths` | `[]string` | `["testdata/**","**/*.test.js","vendor/**"]` | Glob patterns excluded from scanning. |
 | `exclude_extensions` | `[]string` | `[".lock",".svg",".png"]` | File extensions excluded from scanning. |
+| `entropy_exclude_paths` | `[]string` | `[]` | Glob patterns that skip entropy scanning only while keeping pattern matching enabled. |
 | `custom_patterns` | `[]pattern` | `[]` | Extra regex rules added to the built-in pattern library. |
-| `allow_test_fixtures` | `bool` | `false` | Skip entropy scanning for files under `testdata/`. |
 
 Example:
 
@@ -86,11 +86,12 @@ exclude_extensions:
   - ".lock"
   - ".png"
   - ".svg"
+entropy_exclude_paths:
+  - "fixtures/**"
 custom_patterns:
   - name: "Internal Token"
     pattern: "MYCO_[A-Z0-9]{32}"
     severity: "HIGH"
-allow_test_fixtures: false
 ```
 
 ## CLI Reference

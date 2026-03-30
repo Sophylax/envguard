@@ -183,7 +183,7 @@ func (e *Engine) scanFile(path string) ([]Finding, error) {
 		line := scanner.Text()
 		patternFindings, spans := e.scanPatterns(relative, lineNumber, line)
 		findings = append(findings, patternFindings...)
-		if e.cfg.AllowTestFixtures && isTestdataPath(relative) {
+		if e.shouldSkipEntropy(relative) {
 			continue
 		}
 		findings = append(findings, e.scanEntropy(relative, lineNumber, line, spans)...)
@@ -337,6 +337,16 @@ var envFilePattern = regexp.MustCompile(`^\.env(\.\w+)?$`)
 
 func isTestdataPath(path string) bool {
 	return strings.Contains(filepath.ToSlash(path), "/testdata/") || strings.HasPrefix(filepath.ToSlash(path), "testdata/")
+}
+
+func (e *Engine) shouldSkipEntropy(path string) bool {
+	normalized := filepath.ToSlash(path)
+	for _, pattern := range e.cfg.EntropyExcludePaths {
+		if matchGlob(pattern, normalized) {
+			return true
+		}
+	}
+	return false
 }
 
 func matchGlob(pattern string, target string) bool {

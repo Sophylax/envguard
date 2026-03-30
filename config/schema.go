@@ -12,10 +12,10 @@ type Config struct {
 	ExcludePaths []string `json:"exclude_paths" yaml:"exclude_paths"`
 	// ExcludeExtensions contains file extensions that should not be scanned.
 	ExcludeExtensions []string `json:"exclude_extensions" yaml:"exclude_extensions"`
+	// EntropyExcludePaths contains glob patterns for files or directories that should skip entropy scanning only.
+	EntropyExcludePaths []string `json:"entropy_exclude_paths" yaml:"entropy_exclude_paths"`
 	// CustomPatterns contains user-defined regex rules appended to the built-in pattern set.
 	CustomPatterns []CustomPattern `json:"custom_patterns" yaml:"custom_patterns"`
-	// AllowTestFixtures skips entropy scanning for files under testdata when enabled.
-	AllowTestFixtures bool `json:"allow_test_fixtures" yaml:"allow_test_fixtures"`
 }
 
 // CustomPattern defines a user-provided regex-based secret detection rule.
