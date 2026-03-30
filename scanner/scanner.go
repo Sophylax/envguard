@@ -35,10 +35,16 @@ type Engine struct {
 	allow    allowlist.Set
 	patterns []PatternRule
 	warnings []string
+	rootDir  string
 }
 
 // NewEngine constructs a scanner engine.
 func NewEngine(cfg config.Config, allow allowlist.Set) (*Engine, error) {
+	return NewEngineWithRoot(cfg, allow, mustGetwd())
+}
+
+// NewEngineWithRoot constructs a scanner engine with a stable root directory for paths and fingerprints.
+func NewEngineWithRoot(cfg config.Config, allow allowlist.Set, rootDir string) (*Engine, error) {
 	patterns, err := AllPatterns(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("build pattern set: %w", err)
@@ -46,7 +52,14 @@ func NewEngine(cfg config.Config, allow allowlist.Set) (*Engine, error) {
 	if allow == nil {
 		allow = allowlist.Set{}
 	}
-	return &Engine{cfg: cfg, allow: allow, patterns: patterns}, nil
+	if rootDir == "" {
+		rootDir = mustGetwd()
+	}
+	rootDir, err = filepath.Abs(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve root dir %s: %w", rootDir, err)
+	}
+	return &Engine{cfg: cfg, allow: allow, patterns: patterns, rootDir: rootDir}, nil
 }
 
 // Warnings returns non-fatal scan warnings, such as skipped oversized files.
@@ -149,7 +162,7 @@ func (e *Engine) scanFile(path string) ([]Finding, error) {
 	}
 	defer file.Close()
 
-	relative, err := filepath.Rel(mustGetwd(), path)
+	relative, err := filepath.Rel(e.rootDir, path)
 	if err != nil {
 		relative = path
 	}
