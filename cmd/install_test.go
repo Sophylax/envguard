@@ -53,9 +53,14 @@ func TestInstallCommandYesMergesForeignHook(t *testing.T) {
 
 	require.NoError(t, cmd.Execute())
 
+	executablePath, err := os.Executable()
+	require.NoError(t, err)
+
 	data, err := os.ReadFile(hookPath)
 	require.NoError(t, err)
 	content := string(data)
+	assert.Contains(t, content, "ENVGUARD_BIN='"+executablePath+"'")
+	assert.Contains(t, content, `"$ENVGUARD_BIN" check`)
 	assert.Contains(t, content, "envguard check")
 	assert.Contains(t, content, "echo foreign")
 	assert.Contains(t, stdout.String(), "envguard hook installed at "+hookPath)
