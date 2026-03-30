@@ -35,7 +35,6 @@ func Default() Config {
 		MinLength:        20,
 		MaxFileSizeKB:    500,
 		ExcludePaths: []string{
-			"testdata/**",
 			"**/*.test.js",
 			"vendor/**",
 		},
@@ -43,6 +42,9 @@ func Default() Config {
 			".lock",
 			".svg",
 			".png",
+		},
+		EntropyExcludePaths: []string{
+			"testdata/**",
 		},
 	}
 }
