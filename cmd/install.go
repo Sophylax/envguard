@@ -5,6 +5,7 @@ import (
 	"os"
 
 	envgit "github.com/sophylax/envguard/git"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -46,9 +47,5 @@ func isInteractiveInput(in interface{}) bool {
 	if !ok {
 		return false
 	}
-	info, err := file.Stat()
-	if err != nil {
-		return false
-	}
-	return (info.Mode() & os.ModeCharDevice) != 0
+	return isatty.IsTerminal(file.Fd()) || isatty.IsCygwinTerminal(file.Fd())
 }
