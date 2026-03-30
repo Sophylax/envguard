@@ -1,5 +1,10 @@
 # envguard
 
+[![CI](https://github.com/Sophylax/envguard/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Sophylax/envguard/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Sophylax/envguard)](https://github.com/Sophylax/envguard/releases)
+[![Go Version](https://img.shields.io/badge/go-1.22%2B-00ADD8)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Zero-config pre-commit secret scanning with instant local feedback.
 
 `envguard` installs as a local Git pre-commit hook and blocks commits that contain likely secrets before they ever leave your machine. It is designed for fast developer-local feedback, not CI policy enforcement.
