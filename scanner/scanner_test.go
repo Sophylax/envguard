@@ -15,6 +15,7 @@ import (
 func TestScanDirtyFixture(t *testing.T) {
 	cfg := config.Default()
 	cfg.ExcludePaths = nil
+	cfg.EntropyExcludePaths = nil
 
 	engine, err := NewEngine(cfg, allowlist.Set{})
 	require.NoError(t, err)
@@ -126,6 +127,25 @@ func TestEntropyExcludePathsCanSkipTestdataEntropy(t *testing.T) {
 	findings, err := engine.ScanPaths([]string{target})
 	require.NoError(t, err)
 	assert.Empty(t, findings)
+}
+
+func TestDefaultConfigUsesPatternOnlyScanningForTestdata(t *testing.T) {
+	tempDir := t.TempDir()
+	testdataDir := filepath.Join(tempDir, "testdata")
+	require.NoError(t, os.MkdirAll(testdataDir, 0o755))
+
+	target := filepath.Join(testdataDir, "sample.txt")
+	require.NoError(t, os.WriteFile(target, []byte("const key = AKIA1234567890ABCDEF;\nconst token = abcd1234efgh5678ijkl9012mnop3456;\n"), 0o644))
+
+	cfg := config.Default()
+	engine, err := NewEngineWithRoot(cfg, allowlist.Set{}, tempDir)
+	require.NoError(t, err)
+
+	findings, err := engine.ScanPaths([]string{target})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "AWS Access Key", findings[0].RuleName)
+	assert.Equal(t, "pattern", findings[0].Source)
 }
 
 func chdirForTest(t *testing.T, dir string) {

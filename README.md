@@ -67,9 +67,9 @@ The entropy engine tokenizes each scanned line, measures Shannon entropy, and fl
 | `entropy_threshold` | `float64` | `4.5` | Minimum Shannon entropy required to report a token. |
 | `min_length` | `int` | `20` | Minimum token length considered by entropy scanning. |
 | `max_file_size_kb` | `int` | `500` | Skip files larger than this limit with a warning. |
-| `exclude_paths` | `[]string` | `["testdata/**","**/*.test.js","vendor/**"]` | Glob patterns excluded from scanning. |
+| `exclude_paths` | `[]string` | `["**/*.test.js","vendor/**"]` | Glob patterns excluded from scanning. |
 | `exclude_extensions` | `[]string` | `[".lock",".svg",".png"]` | File extensions excluded from scanning. |
-| `entropy_exclude_paths` | `[]string` | `[]` | Glob patterns that skip entropy scanning only while keeping pattern matching enabled for files that are still included by `exclude_paths`. |
+| `entropy_exclude_paths` | `[]string` | `["testdata/**"]` | Glob patterns that skip entropy scanning only while keeping pattern matching enabled for files that are still included by `exclude_paths`. |
 | `custom_patterns` | `[]pattern` | `[]` | Extra regex rules added to the built-in pattern library. |
 
 Example:
@@ -87,7 +87,6 @@ exclude_extensions:
   - ".svg"
 entropy_exclude_paths:
   - "testdata/**"
-  - "fixtures/**"
 custom_patterns:
   - name: "Internal Token"
     pattern: "MYCO_[A-Z0-9]{32}"
@@ -95,7 +94,7 @@ custom_patterns:
 ```
 
 Note:
-`exclude_paths` is applied before scanning starts. If a path is excluded there, `entropy_exclude_paths` will never see it. To keep pattern matching enabled for `testdata/` while suppressing entropy checks, remove `testdata/**` from `exclude_paths` and add it to `entropy_exclude_paths` instead.
+`exclude_paths` is applied before scanning starts. If a path is excluded there, `entropy_exclude_paths` will never see it. By default, `testdata/**` stays included for pattern scanning and is excluded from entropy scanning through `entropy_exclude_paths`.
 
 ## CLI Reference
 
