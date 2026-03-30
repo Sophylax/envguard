@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/Sophylax/envguard/security/advisories/new
+    about: Report undisclosed vulnerabilities privately.
+  - name: Support policy
+    url: https://github.com/Sophylax/envguard/blob/main/SUPPORT.md
+    about: Read support expectations and what details to include.

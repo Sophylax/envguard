@@ -1,12 +1,19 @@
 # envguard
 
+[![CI](https://github.com/Sophylax/envguard/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Sophylax/envguard/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Sophylax/envguard)](https://github.com/Sophylax/envguard/releases)
+[![Go Version](https://img.shields.io/badge/go-1.22%2B-00ADD8)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Zero-config pre-commit secret scanning with instant local feedback.
 
-`envguard` installs as a local Git pre-commit hook and blocks commits that contain likely secrets before they ever leave your machine.
+`envguard` installs as a local Git pre-commit hook and blocks commits that contain likely secrets before they ever leave your machine. It is designed for fast developer-local feedback, not CI policy enforcement.
 
 ![envguard terminal demo](assets/envguard-demo.gif)
 
 ## Install
+
+Choose the install path that fits your environment.
 
 ### Homebrew
 
@@ -46,7 +53,7 @@ git add .
 git commit -m "ship it"
 ```
 
-To install over an existing foreign pre-commit hook in automation:
+If you need to install over an existing non-envguard pre-commit hook in automation:
 
 ```bash
 envguard install --yes
@@ -69,7 +76,7 @@ The entropy engine tokenizes each scanned line, measures Shannon entropy, and fl
 | `max_file_size_kb` | `int` | `500` | Skip files larger than this limit with a warning. |
 | `exclude_paths` | `[]string` | `["**/*.test.js","vendor/**"]` | Glob patterns excluded from scanning. |
 | `exclude_extensions` | `[]string` | `[".lock",".svg",".png"]` | File extensions excluded from scanning. |
-| `entropy_exclude_paths` | `[]string` | `["testdata/**"]` | Glob patterns that skip entropy scanning only while keeping pattern matching enabled for files that are still included by `exclude_paths`. |
+| `entropy_exclude_paths` | `[]string` | `["testdata/**"]` | Glob patterns that skip entropy scanning only while keeping pattern matching enabled for files that are not excluded by `exclude_paths`. |
 | `custom_patterns` | `[]pattern` | `[]` | Extra regex rules added to the built-in pattern library. |
 
 Example:
@@ -93,8 +100,7 @@ custom_patterns:
     severity: "HIGH"
 ```
 
-Note:
-`exclude_paths` is applied before scanning starts. If a path is excluded there, `entropy_exclude_paths` will never see it. By default, `testdata/**` stays included for pattern scanning and is excluded from entropy scanning through `entropy_exclude_paths`.
+`exclude_paths` is applied before scanning starts. If a path is excluded there, `entropy_exclude_paths` never runs for it. By default, `testdata/**` stays included for pattern scanning and is excluded from entropy scanning through `entropy_exclude_paths`.
 
 ## CLI Reference
 
@@ -117,22 +123,22 @@ Notes:
 
 ### `envguard install`
 
-Installs the Git pre-commit hook in the current repository. If a non-envguard hook already exists, envguard prompts before prepending itself in interactive use and fails fast in non-interactive contexts unless `--yes` is passed.
+Install the Git pre-commit hook in the current repository. If a non-envguard hook already exists, `envguard` prompts before prepending itself in interactive use and fails fast in non-interactive contexts unless `--yes` is passed.
 
 Flags:
 - `-y`, `--yes`: prepend envguard to an existing foreign hook without prompting.
 
 ### `envguard uninstall`
 
-Removes envguard from the pre-commit hook. If envguard was the only content, the hook file is deleted. Running it repeatedly is safe.
+Remove `envguard` from the pre-commit hook. If `envguard` was the only content, the hook file is deleted. Running it repeatedly is safe.
 
 ### `envguard allow <fingerprint>`
 
-Adds a finding fingerprint to `.envguard-ignore` in the repository root.
+Add a finding fingerprint to `.envguard-ignore` in the repository root.
 
 ### `envguard version`
 
-Prints the build version injected at compile time.
+Print the build version injected at compile time.
 
 ## Allowlist Workflow
 
@@ -160,12 +166,12 @@ The `.envguard-ignore` file is newline-separated and intended to be committed so
 | `gitleaks` | No | Good, but usually tuned for CI and policy workflows | Partial | Strong |
 | `git-secrets` | No | Good | Yes | Narrower pattern coverage |
 
-## Contributing
+## Project Policies
 
-1. Fork the repo.
-2. Run `make test`.
-3. Add or update tests with your changes.
-4. Open a pull request with a clear description and conventional commit title when possible.
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [MAINTAINERS.md](MAINTAINERS.md)
+- [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
 
 ## License
 
