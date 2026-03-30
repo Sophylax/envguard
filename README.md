@@ -9,20 +9,20 @@ Zero-config pre-commit secret scanning with instant local feedback.
 ### Homebrew
 
 ```bash
-brew tap envguard/homebrew-tap
+brew tap Sophylax/homebrew-tap
 brew install envguard
 ```
 
 ### Scoop
 
 ```powershell
-scoop bucket add sophylax https://github.com/sophylax/scoop-bucket
+scoop bucket add Sophylax https://github.com/Sophylax/scoop-bucket
 scoop install envguard
 ```
 
 ### Direct binary download
 
-Download the matching archive from GitHub Releases and place `envguard` in your `PATH`.
+Download the matching archive from [GitHub Releases](https://github.com/Sophylax/envguard/releases) and place `envguard` in your `PATH`.
 
 ### Go install
 
