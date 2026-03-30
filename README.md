@@ -27,7 +27,7 @@ Download the matching archive from [GitHub Releases](https://github.com/Sophylax
 ### Go install
 
 ```bash
-go install github.com/Sophylax/envguard@latest
+go install github.com/sophylax/envguard@latest
 ```
 
 ## Quick Start
