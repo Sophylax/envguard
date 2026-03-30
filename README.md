@@ -92,7 +92,7 @@ Exit code:
 
 ### `envguard install`
 
-Installs the Git pre-commit hook in the current repository. If a non-envguard hook already exists, envguard prompts before prepending itself.
+Installs the Git pre-commit hook in the current repository. If a non-envguard hook already exists, envguard prompts before prepending itself in interactive use and fails fast in non-interactive contexts unless `--yes` is passed.
 
 ### `envguard uninstall`
 

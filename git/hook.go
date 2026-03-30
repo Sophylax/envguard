@@ -21,6 +21,12 @@ else
 fi
 `
 
+// InstallOptions controls how envguard merges with existing hooks.
+type InstallOptions struct {
+	Force       bool
+	Interactive bool
+}
+
 // FindRepoRoot walks upward from startDir until it finds a .git directory.
 func FindRepoRoot(startDir string) (string, error) {
 	dir, err := filepath.Abs(startDir)
@@ -49,7 +55,7 @@ func HookPath(repoRoot string) string {
 }
 
 // InstallHook installs or updates the envguard pre-commit hook.
-func InstallHook(repoRoot string, in io.Reader, out io.Writer) (string, error) {
+func InstallHook(repoRoot string, in io.Reader, out io.Writer, opts InstallOptions) (string, error) {
 	hookPath := HookPath(repoRoot)
 	existing, err := os.ReadFile(hookPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -67,6 +73,16 @@ func InstallHook(repoRoot string, in io.Reader, out io.Writer) (string, error) {
 			return "", fmt.Errorf("overwrite envguard hook %s: %w", hookPath, err)
 		}
 	default:
+		if opts.Force {
+			merged := hookScript + "\n" + content
+			if err := writeHook(hookPath, merged); err != nil {
+				return "", fmt.Errorf("merge envguard hook into %s: %w", hookPath, err)
+			}
+			return hookPath, nil
+		}
+		if !opts.Interactive {
+			return "", fmt.Errorf("foreign pre-commit hook exists at %s; rerun with --yes to prepend envguard non-interactively", hookPath)
+		}
 		fmt.Fprintln(out, "Warning: existing pre-commit hook found.")
 		fmt.Fprint(out, "Prepend envguard to existing hook? [y/N]: ")
 		ok, err := confirm(in)

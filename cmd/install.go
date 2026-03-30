@@ -9,7 +9,9 @@ import (
 )
 
 func newInstallCommand() *cobra.Command {
-	return &cobra.Command{
+	var force bool
+
+	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install the git pre-commit hook",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -21,7 +23,10 @@ func newInstallCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("find git repository: %w", err)
 			}
-			hookPath, err := envgit.InstallHook(repoRoot, cmd.InOrStdin(), cmd.OutOrStdout())
+			hookPath, err := envgit.InstallHook(repoRoot, cmd.InOrStdin(), cmd.OutOrStdout(), envgit.InstallOptions{
+				Force:       force,
+				Interactive: isInteractiveInput(cmd.InOrStdin()),
+			})
 			if err != nil {
 				return fmt.Errorf("install hook: %w", err)
 			}
@@ -31,4 +36,19 @@ func newInstallCommand() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&force, "yes", "y", false, "prepend envguard to an existing foreign hook without prompting")
+	return cmd
+}
+
+func isInteractiveInput(in interface{}) bool {
+	file, ok := in.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return false
+	}
+	return (info.Mode() & os.ModeCharDevice) != 0
 }
