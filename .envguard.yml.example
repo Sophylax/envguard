@@ -2,15 +2,16 @@ entropy_threshold: 4.5
 min_length: 20
 max_file_size_kb: 500
 exclude_paths:
-  - "testdata/**"
   - "**/*.test.js"
   - "vendor/**"
 exclude_extensions:
   - ".lock"
   - ".svg"
   - ".png"
+entropy_exclude_paths:
+  - "testdata/**"
+  - "fixtures/**"
 custom_patterns:
   - name: "Internal Token"
     pattern: "MYCO_[A-Z0-9]{32}"
     severity: "HIGH"
-allow_test_fixtures: false

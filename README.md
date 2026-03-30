@@ -69,8 +69,8 @@ The entropy engine tokenizes each scanned line, measures Shannon entropy, and fl
 | `max_file_size_kb` | `int` | `500` | Skip files larger than this limit with a warning. |
 | `exclude_paths` | `[]string` | `["testdata/**","**/*.test.js","vendor/**"]` | Glob patterns excluded from scanning. |
 | `exclude_extensions` | `[]string` | `[".lock",".svg",".png"]` | File extensions excluded from scanning. |
+| `entropy_exclude_paths` | `[]string` | `[]` | Glob patterns that skip entropy scanning only while keeping pattern matching enabled for files that are still included by `exclude_paths`. |
 | `custom_patterns` | `[]pattern` | `[]` | Extra regex rules added to the built-in pattern library. |
-| `allow_test_fixtures` | `bool` | `false` | Skip entropy scanning for files under `testdata/`. |
 
 Example:
 
@@ -79,19 +79,23 @@ entropy_threshold: 4.5
 min_length: 20
 max_file_size_kb: 500
 exclude_paths:
-  - "testdata/**"
   - "**/*.test.js"
   - "vendor/**"
 exclude_extensions:
   - ".lock"
   - ".png"
   - ".svg"
+entropy_exclude_paths:
+  - "testdata/**"
+  - "fixtures/**"
 custom_patterns:
   - name: "Internal Token"
     pattern: "MYCO_[A-Z0-9]{32}"
     severity: "HIGH"
-allow_test_fixtures: false
 ```
+
+Note:
+`exclude_paths` is applied before scanning starts. If a path is excluded there, `entropy_exclude_paths` will never see it. To keep pattern matching enabled for `testdata/` while suppressing entropy checks, remove `testdata/**` from `exclude_paths` and add it to `entropy_exclude_paths` instead.
 
 ## CLI Reference
 
