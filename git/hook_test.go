@@ -119,12 +119,33 @@ func TestFindRepoRootSupportsDotGitFile(t *testing.T) {
 	assert.Equal(t, gitDir, foundGitDir)
 }
 
-func TestHookPathSupportsDotGitFile(t *testing.T) {
-	repoRoot, gitDir := initTestRepoWithGitFile(t)
+func TestHookPathUsesCommonGitDirForWorktrees(t *testing.T) {
+	repoRoot, gitDir, commonGitDir := initTestWorktreeRepo(t)
 
 	hookPath, err := HookPath(repoRoot)
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(gitDir, "hooks", "pre-commit"), hookPath)
+	assert.Equal(t, filepath.Join(commonGitDir, "hooks", "pre-commit"), hookPath)
+
+	foundGitDir, err := GitDir(repoRoot)
+	require.NoError(t, err)
+	assert.Equal(t, gitDir, foundGitDir)
+
+	foundCommonGitDir, err := CommonGitDir(repoRoot)
+	require.NoError(t, err)
+	assert.Equal(t, commonGitDir, foundCommonGitDir)
+}
+
+func TestInstallHookUsesCommonGitDirForWorktrees(t *testing.T) {
+	repoRoot, _, commonGitDir := initTestWorktreeRepo(t)
+
+	var output bytes.Buffer
+	hookPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard"})
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(commonGitDir, "hooks", "pre-commit"), hookPath)
+
+	data, err := os.ReadFile(hookPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "ENVGUARD_BIN='/usr/local/bin/envguard'")
 }
 
 func initTestRepo(t *testing.T) string {
@@ -143,4 +164,18 @@ func initTestRepoWithGitFile(t *testing.T) (string, string) {
 	require.NoError(t, os.MkdirAll(filepath.Join(gitDir, "hooks"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(repoRoot, ".git"), []byte("gitdir: ../actual-git-dir\n"), 0o644))
 	return repoRoot, gitDir
+}
+
+func initTestWorktreeRepo(t *testing.T) (string, string, string) {
+	t.Helper()
+	base := t.TempDir()
+	repoRoot := filepath.Join(base, "worktree")
+	gitDir := filepath.Join(base, "main.git", "worktrees", "feature")
+	commonGitDir := filepath.Join(base, "main.git")
+	require.NoError(t, os.MkdirAll(repoRoot, 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(gitDir), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(commonGitDir, "hooks"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repoRoot, ".git"), []byte("gitdir: ../main.git/worktrees/feature\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(gitDir, "commondir"), []byte("../..\n"), 0o644))
+	return repoRoot, gitDir, commonGitDir
 }

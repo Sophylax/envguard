@@ -53,11 +53,24 @@ func GitDir(repoRoot string) (string, error) {
 
 // HookPath returns the pre-commit hook path for the repo.
 func HookPath(repoRoot string) (string, error) {
+	commonGitDir, err := CommonGitDir(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve common git dir for %s: %w", repoRoot, err)
+	}
+	return filepath.Join(commonGitDir, "hooks", "pre-commit"), nil
+}
+
+// CommonGitDir returns the common Git directory used for shared repo data such as hooks.
+func CommonGitDir(repoRoot string) (string, error) {
 	gitDir, err := GitDir(repoRoot)
 	if err != nil {
-		return "", fmt.Errorf("resolve hook path for %s: %w", repoRoot, err)
+		return "", fmt.Errorf("resolve git dir for %s: %w", repoRoot, err)
 	}
-	return filepath.Join(gitDir, "hooks", "pre-commit"), nil
+	commonGitDir, err := resolveCommonGitDir(gitDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve common git dir from %s: %w", gitDir, err)
+	}
+	return commonGitDir, nil
 }
 
 // InstallHook installs or updates the envguard pre-commit hook.
@@ -183,6 +196,36 @@ func resolveGitDirFromDotGitPath(dotGitPath string) (string, error) {
 		return "", fmt.Errorf("git dir %s is not a directory", gitDir)
 	}
 	return gitDir, nil
+}
+
+func resolveCommonGitDir(gitDir string) (string, error) {
+	commonDirPath := filepath.Join(gitDir, "commondir")
+	data, err := os.ReadFile(commonDirPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return gitDir, nil
+		}
+		return "", fmt.Errorf("read commondir %s: %w", commonDirPath, err)
+	}
+	commonDir := strings.TrimSpace(string(data))
+	if commonDir == "" {
+		return "", fmt.Errorf("parse commondir %s: empty path", commonDirPath)
+	}
+	if !filepath.IsAbs(commonDir) {
+		commonDir = filepath.Join(gitDir, commonDir)
+	}
+	commonDir, err = filepath.Abs(commonDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve common git dir %s: %w", commonDir, err)
+	}
+	info, err := os.Stat(commonDir)
+	if err != nil {
+		return "", fmt.Errorf("stat common git dir %s: %w", commonDir, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("common git dir %s is not a directory", commonDir)
+	}
+	return commonDir, nil
 }
 
 func buildHookScript(binaryPath string) string {
