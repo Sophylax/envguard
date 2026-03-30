@@ -20,11 +20,16 @@ func newInstallCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("get working directory: %w", err)
 			}
+			executablePath, err := os.Executable()
+			if err != nil {
+				return fmt.Errorf("resolve executable path: %w", err)
+			}
 			repoRoot, err := envgit.FindRepoRoot(cwd)
 			if err != nil {
 				return fmt.Errorf("find git repository: %w", err)
 			}
 			hookPath, err := envgit.InstallHook(repoRoot, cmd.InOrStdin(), cmd.OutOrStdout(), envgit.InstallOptions{
+				BinaryPath:  executablePath,
 				Force:       force,
 				Interactive: isInteractiveInput(cmd.InOrStdin()),
 			})

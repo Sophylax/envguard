@@ -17,7 +17,7 @@ func TestInstallHookNonInteractiveForeignHookRequiresYes(t *testing.T) {
 	require.NoError(t, os.WriteFile(hookPath, []byte("#!/bin/sh\necho foreign\n"), 0o755))
 
 	var output bytes.Buffer
-	_, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{Interactive: false})
+	_, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Interactive: false})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "rerun with --yes")
 }
@@ -28,14 +28,17 @@ func TestInstallHookForceMergesForeignHook(t *testing.T) {
 	require.NoError(t, os.WriteFile(hookPath, []byte("#!/bin/sh\necho foreign\n"), 0o755))
 
 	var output bytes.Buffer
-	installedPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{Force: true, Interactive: false})
+	installedPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Force: true, Interactive: false})
 	require.NoError(t, err)
 	assert.Equal(t, hookPath, installedPath)
 
 	data, err := os.ReadFile(hookPath)
 	require.NoError(t, err)
 	content := string(data)
-	assert.Contains(t, content, "envguard check")
+	assert.Contains(t, content, "ENVGUARD_BIN='/usr/local/bin/envguard'")
+	assert.Contains(t, content, "if command -v envguard >/dev/null 2>&1; then")
+	assert.Contains(t, content, "elif [ -n \"$ENVGUARD_BIN\" ] && [ -x \"$ENVGUARD_BIN\" ]; then")
+	assert.Less(t, strings.Index(content, "envguard check"), strings.Index(content, `"$ENVGUARD_BIN" check`))
 	assert.Contains(t, content, "echo foreign")
 }
 
@@ -46,7 +49,7 @@ func TestInstallHookInteractiveDeclineKeepsForeignHook(t *testing.T) {
 	require.NoError(t, os.WriteFile(hookPath, []byte(original), 0o755))
 
 	var output bytes.Buffer
-	_, err := InstallHook(repoRoot, strings.NewReader("n\n"), &output, InstallOptions{Interactive: true})
+	_, err := InstallHook(repoRoot, strings.NewReader("n\n"), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Interactive: true})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "installation cancelled")
 
@@ -58,11 +61,11 @@ func TestInstallHookInteractiveDeclineKeepsForeignHook(t *testing.T) {
 func TestInstallHookOverwritesExistingEnvguardBlockWithoutDuplication(t *testing.T) {
 	repoRoot := initTestRepo(t)
 	hookPath := HookPath(repoRoot)
-	existing := "#!/bin/sh\n" + hookScript + "\n" + "echo foreign\n"
+	existing := "#!/bin/sh\n" + buildHookScript("/old/bin/envguard") + "\n" + "echo foreign\n"
 	require.NoError(t, os.WriteFile(hookPath, []byte(existing), 0o755))
 
 	var output bytes.Buffer
-	installedPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{})
+	installedPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/new/bin/envguard"})
 	require.NoError(t, err)
 	assert.Equal(t, hookPath, installedPath)
 
@@ -70,7 +73,29 @@ func TestInstallHookOverwritesExistingEnvguardBlockWithoutDuplication(t *testing
 	require.NoError(t, err)
 	content := string(data)
 	assert.Equal(t, 1, strings.Count(content, hookMarker))
-	assert.Contains(t, content, "envguard check")
+	assert.Equal(t, 1, strings.Count(content, hookMarkerEnd))
+	assert.Contains(t, content, "ENVGUARD_BIN='/new/bin/envguard'")
+	assert.NotContains(t, content, "ENVGUARD_BIN='/old/bin/envguard'")
+	assert.Less(t, strings.Index(content, "envguard check"), strings.Index(content, `"$ENVGUARD_BIN" check`))
+	assert.Contains(t, content, "echo foreign")
+}
+
+func TestUninstallHookRemovesNewStyleEnvguardBlock(t *testing.T) {
+	repoRoot := initTestRepo(t)
+	hookPath := HookPath(repoRoot)
+	existing := "#!/bin/sh\n" + buildHookScript("/usr/local/bin/envguard") + "\n" + "echo foreign\n"
+	require.NoError(t, os.WriteFile(hookPath, []byte(existing), 0o755))
+
+	changed, err := UninstallHook(repoRoot)
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	data, err := os.ReadFile(hookPath)
+	require.NoError(t, err)
+	content := string(data)
+	assert.NotContains(t, content, hookMarker)
+	assert.NotContains(t, content, hookMarkerEnd)
+	assert.NotContains(t, content, "ENVGUARD_BIN=")
 	assert.Contains(t, content, "echo foreign")
 }
 

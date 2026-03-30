@@ -11,18 +11,11 @@ import (
 )
 
 const hookMarker = "# envguard pre-commit hook"
-
-const hookScript = `# envguard pre-commit hook
-if command -v envguard >/dev/null 2>&1; then
-  envguard check
-else
-  echo "envguard binary not found in PATH"
-  exit 1
-fi
-`
+const hookMarkerEnd = "# end envguard pre-commit hook"
 
 // InstallOptions controls how envguard merges with existing hooks.
 type InstallOptions struct {
+	BinaryPath  string
 	Force       bool
 	Interactive bool
 }
@@ -57,6 +50,7 @@ func HookPath(repoRoot string) string {
 // InstallHook installs or updates the envguard pre-commit hook.
 func InstallHook(repoRoot string, in io.Reader, out io.Writer, opts InstallOptions) (string, error) {
 	hookPath := HookPath(repoRoot)
+	hookScript := buildHookScript(opts.BinaryPath)
 	existing, err := os.ReadFile(hookPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("read hook %s: %w", hookPath, err)
@@ -69,7 +63,7 @@ func InstallHook(repoRoot string, in io.Reader, out io.Writer, opts InstallOptio
 			return "", fmt.Errorf("write new hook %s: %w", hookPath, err)
 		}
 	case strings.Contains(content, hookMarker):
-		if err := writeHook(hookPath, rewriteWithEnvguard(content)); err != nil {
+		if err := writeHook(hookPath, rewriteWithEnvguard(content, opts.BinaryPath)); err != nil {
 			return "", fmt.Errorf("overwrite envguard hook %s: %w", hookPath, err)
 		}
 	default:
@@ -136,6 +130,28 @@ func writeHook(path string, content string) error {
 	return nil
 }
 
+func buildHookScript(binaryPath string) string {
+	return fmt.Sprintf(`%s
+ENVGUARD_BIN=%s
+if command -v envguard >/dev/null 2>&1; then
+  envguard check
+elif [ -n "$ENVGUARD_BIN" ] && [ -x "$ENVGUARD_BIN" ]; then
+  "$ENVGUARD_BIN" check
+else
+  echo "envguard binary not found. Re-run 'envguard install' to refresh the hook."
+  exit 1
+fi
+%s
+`, hookMarker, shellQuote(binaryPath), hookMarkerEnd)
+}
+
+func shellQuote(value string) string {
+	if value == "" {
+		return `""`
+	}
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
+}
+
 func confirm(in io.Reader) (bool, error) {
 	reader := bufio.NewReader(in)
 	line, err := reader.ReadString('\n')
@@ -146,12 +162,41 @@ func confirm(in io.Reader) (bool, error) {
 	return answer == "y" || answer == "yes", nil
 }
 
-func rewriteWithEnvguard(content string) string {
+func rewriteWithEnvguard(content string, binaryPath string) string {
+	if binaryPath == "" {
+		binaryPath = extractEnvguardBinaryPath(content)
+	}
+	hookScript := buildHookScript(binaryPath)
 	remaining := strings.TrimSpace(removeEnvguardBlock(content))
 	if remaining == "" {
 		return hookScript
 	}
 	return hookScript + "\n" + remaining + "\n"
+}
+
+func extractEnvguardBinaryPath(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "ENVGUARD_BIN=") {
+			continue
+		}
+		value := strings.TrimPrefix(trimmed, "ENVGUARD_BIN=")
+		if unquoted, ok := unquoteShellString(value); ok {
+			return unquoted
+		}
+	}
+	return ""
+}
+
+func unquoteShellString(value string) (string, bool) {
+	if len(value) >= 2 && value[0] == '\'' && value[len(value)-1] == '\'' {
+		unquoted := strings.TrimSuffix(strings.TrimPrefix(value, "'"), "'")
+		return strings.ReplaceAll(unquoted, `'"'"'`, `'`), true
+	}
+	if value == `""` {
+		return "", true
+	}
+	return "", false
 }
 
 func removeEnvguardBlock(content string) string {
@@ -165,13 +210,21 @@ func removeEnvguardBlock(content string) string {
 			continue
 		}
 		if skip {
+			if trimmed == hookMarkerEnd {
+				skip = false
+				continue
+			}
 			if trimmed == "" {
 				skip = false
 				continue
 			}
-			if trimmed == "if command -v envguard >/dev/null 2>&1; then" ||
+			if strings.HasPrefix(trimmed, "ENVGUARD_BIN=") ||
+				trimmed == "if command -v envguard >/dev/null 2>&1; then" ||
 				trimmed == "envguard check" ||
+				trimmed == `elif [ -n "$ENVGUARD_BIN" ] && [ -x "$ENVGUARD_BIN" ]; then` ||
+				trimmed == `"$ENVGUARD_BIN" check` ||
 				trimmed == "else" ||
+				trimmed == `echo "envguard binary not found. Re-run 'envguard install' to refresh the hook."` ||
 				trimmed == `echo "envguard binary not found in PATH"` ||
 				trimmed == "exit 1" ||
 				trimmed == "fi" {
