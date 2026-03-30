@@ -94,6 +94,9 @@ Exit code:
 
 Installs the Git pre-commit hook in the current repository. If a non-envguard hook already exists, envguard prompts before prepending itself in interactive use and fails fast in non-interactive contexts unless `--yes` is passed.
 
+Flags:
+- `-y`, `--yes`: prepend envguard to an existing foreign hook without prompting.
+
 ### `envguard uninstall`
 
 Removes envguard from the pre-commit hook. If envguard was the only content, the hook file is deleted. Running it repeatedly is safe.
