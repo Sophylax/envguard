@@ -18,7 +18,7 @@ func TestStagedFiles(t *testing.T) {
 
 	files, err := StagedFiles()
 	require.NoError(t, err)
-	assert.Equal(t, []string{"cmd/check.go", "scanner/scanner.go"}, files)
+	assert.Equal(t, []string{"cmd/check.go", "deleted.txt", "scanner/scanner.go"}, files)
 }
 
 func fakeExecCommand(command string, args ...string) *exec.Cmd {
@@ -33,6 +33,6 @@ func TestHelperProcess(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
-	_, _ = os.Stdout.WriteString("cmd/check.go\nscanner/scanner.go\n")
+	_, _ = os.Stdout.WriteString("cmd/check.go\ndeleted.txt\nscanner/scanner.go\n")
 	os.Exit(0)
 }

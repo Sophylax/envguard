@@ -61,6 +61,22 @@ func TestScanWarnsWhenFileExceedsMaxSize(t *testing.T) {
 	assert.Contains(t, engine.Warnings()[0], "exceeds limit")
 }
 
+func TestScanSkipsMissingPathWithWarning(t *testing.T) {
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "deleted.txt")
+
+	cfg := config.Default()
+	engine, err := NewEngine(cfg, allowlist.Set{})
+	require.NoError(t, err)
+
+	findings, err := engine.ScanPaths([]string{target})
+	require.NoError(t, err)
+	assert.Empty(t, findings)
+	require.Len(t, engine.Warnings(), 1)
+	assert.Contains(t, engine.Warnings()[0], "path no longer exists")
+	assert.Contains(t, engine.Warnings()[0], "deleted.txt")
+}
+
 func TestEnvFileDetectionCanBeAllowlisted(t *testing.T) {
 	tempDir := t.TempDir()
 	chdirForTest(t, tempDir)

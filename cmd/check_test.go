@@ -65,6 +65,38 @@ func TestCheckCommandSeverityFilterAppliesToJSONOutput(t *testing.T) {
 	assert.Equal(t, "AWS Access Key", findings[0].RuleName)
 }
 
+func TestCheckCommandSkipsMissingStagedFiles(t *testing.T) {
+	tempDir := t.TempDir()
+	chdirForTest(t, tempDir)
+
+	target := filepath.Join(tempDir, "secret.js")
+	require.NoError(t, os.WriteFile(target, []byte("const key = \"AKIA1234567890ABCDEF\";\n"), 0o644))
+
+	original := envgitStagedFiles
+	envgitStagedFiles = func() ([]string, error) {
+		return []string{"deleted.txt", "secret.js"}, nil
+	}
+	t.Cleanup(func() {
+		envgitStagedFiles = original
+	})
+
+	cmd := newCheckCommand()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	output := &bytes.Buffer{}
+	cmd.SetOut(output)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--json"})
+
+	err := cmd.Execute()
+	require.ErrorIs(t, err, ErrFindings)
+
+	var findings []scanner.Finding
+	require.NoError(t, json.Unmarshal(output.Bytes(), &findings))
+	require.Len(t, findings, 1)
+	assert.Equal(t, "AWS Access Key", findings[0].RuleName)
+}
+
 func chdirForTest(t *testing.T, dir string) {
 	t.Helper()
 	wd, err := os.Getwd()

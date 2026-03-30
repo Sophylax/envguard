@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var envgitStagedFiles = envgit.StagedFiles
+
 func newCheckCommand() *cobra.Command {
 	var scanAll bool
 	var jsonOutput bool
@@ -105,7 +107,7 @@ func resolveScanPaths(args []string, scanAll bool) ([]string, string, error) {
 	if scanAll {
 		return []string{"."}, "working tree files", nil
 	}
-	staged, err := envgit.StagedFiles()
+	staged, err := envgitStagedFiles()
 	if err != nil {
 		return nil, "", fmt.Errorf("list staged files: %w", err)
 	}
