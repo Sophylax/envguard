@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -119,8 +120,8 @@ func TestFindRepoRootSupportsDotGitFile(t *testing.T) {
 	assert.Equal(t, gitDir, foundGitDir)
 }
 
-func TestHookPathUsesCommonGitDirForWorktrees(t *testing.T) {
-	repoRoot, gitDir, commonGitDir := initTestWorktreeRepo(t)
+func TestHookPathUsesCommonGitDirForWorktreeLikeLayout(t *testing.T) {
+	repoRoot, gitDir, commonGitDir := initTestWorktreeLikeRepo(t)
 
 	hookPath, err := HookPath(repoRoot)
 	require.NoError(t, err)
@@ -135,8 +136,8 @@ func TestHookPathUsesCommonGitDirForWorktrees(t *testing.T) {
 	assert.Equal(t, commonGitDir, foundCommonGitDir)
 }
 
-func TestInstallHookUsesCommonGitDirForWorktrees(t *testing.T) {
-	repoRoot, _, commonGitDir := initTestWorktreeRepo(t)
+func TestInstallHookUsesCommonGitDirForWorktreeLikeLayout(t *testing.T) {
+	repoRoot, _, commonGitDir := initTestWorktreeLikeRepo(t)
 
 	var output bytes.Buffer
 	hookPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard"})
@@ -146,6 +147,35 @@ func TestInstallHookUsesCommonGitDirForWorktrees(t *testing.T) {
 	data, err := os.ReadFile(hookPath)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "ENVGUARD_BIN='/usr/local/bin/envguard'")
+}
+
+func TestWorktreeIntegrationUsesCommonGitDirHooks(t *testing.T) {
+	repoRoot, worktreePath := initRealGitWorktree(t)
+
+	hookPath, err := HookPath(worktreePath)
+	require.NoError(t, err)
+	assert.Equal(t, gitPathOutput(t, worktreePath, "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit"), hookPath)
+
+	foundRoot, err := FindRepoRoot(filepath.Join(worktreePath, "nested"))
+	require.NoError(t, err)
+	assert.Equal(t, worktreePath, foundRoot)
+
+	foundGitDir, err := GitDir(worktreePath)
+	require.NoError(t, err)
+	assert.Equal(t, gitPathOutput(t, worktreePath, "rev-parse", "--absolute-git-dir"), foundGitDir)
+
+	foundCommonGitDir, err := CommonGitDir(worktreePath)
+	require.NoError(t, err)
+	assert.Equal(t, gitPathOutput(t, worktreePath, "rev-parse", "--path-format=absolute", "--git-common-dir"), foundCommonGitDir)
+
+	mainRepoHookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
+	assert.Equal(t, hookPath, mainRepoHookPath)
+
+	var output bytes.Buffer
+	installedHookPath, err := InstallHook(worktreePath, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard"})
+	require.NoError(t, err)
+	assert.Equal(t, hookPath, installedHookPath)
 }
 
 func initTestRepo(t *testing.T) string {
@@ -166,7 +196,7 @@ func initTestRepoWithGitFile(t *testing.T) (string, string) {
 	return repoRoot, gitDir
 }
 
-func initTestWorktreeRepo(t *testing.T) (string, string, string) {
+func initTestWorktreeLikeRepo(t *testing.T) (string, string, string) {
 	t.Helper()
 	base := t.TempDir()
 	repoRoot := filepath.Join(base, "worktree")
@@ -178,4 +208,39 @@ func initTestWorktreeRepo(t *testing.T) (string, string, string) {
 	require.NoError(t, os.WriteFile(filepath.Join(repoRoot, ".git"), []byte("gitdir: ../main.git/worktrees/feature\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(gitDir, "commondir"), []byte("../..\n"), 0o644))
 	return repoRoot, gitDir, commonGitDir
+}
+
+func initRealGitWorktree(t *testing.T) (string, string) {
+	t.Helper()
+	base := t.TempDir()
+	repoRoot := filepath.Join(base, "repo")
+	worktreePath := filepath.Join(base, "feature-worktree")
+	require.NoError(t, os.MkdirAll(repoRoot, 0o755))
+
+	runGit(t, repoRoot, "init")
+	runGit(t, repoRoot, "config", "user.name", "Envguard Test")
+	runGit(t, repoRoot, "config", "user.email", "envguard@example.com")
+	runGit(t, repoRoot, "commit", "--allow-empty", "-m", "init")
+	runGit(t, repoRoot, "worktree", "add", "-b", "feature", worktreePath)
+	require.NoError(t, os.MkdirAll(filepath.Join(worktreePath, "nested"), 0o755))
+
+	return repoRoot, worktreePath
+}
+
+func runGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "git %s failed: %s", strings.Join(args, " "), strings.TrimSpace(string(output)))
+	return strings.TrimSpace(string(output))
+}
+
+func gitPathOutput(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	output := runGit(t, dir, args...)
+	if filepath.IsAbs(output) {
+		return filepath.Clean(output)
+	}
+	return filepath.Clean(filepath.Join(dir, output))
 }
