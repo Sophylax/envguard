@@ -1,0 +1,63 @@
+version: 2
+
+project_name: envguard
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: envguard
+    main: .
+    binary: envguard
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: "checksums.txt"
+
+brews:
+  - repository:
+      owner: envguard
+      name: homebrew-tap
+    homepage: https://github.com/sophylax/envguard
+    description: Zero-config pre-commit secret scanner for Git repositories.
+    license: MIT
+    commit_author:
+      name: goreleaserbot
+      email: bot@envguard.dev
+
+scoops:
+  - repository:
+      owner: sophylax
+      name: scoop-bucket
+    homepage: https://github.com/sophylax/envguard
+    description: Zero-config pre-commit secret scanner for Git repositories.
+    license: MIT
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

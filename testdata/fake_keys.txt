@@ -1,0 +1,39 @@
+AWS Access Key|positive|AKIA1234567890ABCDEF
+AWS Access Key|positive|AKIAABCDEFGHIJKLMNOP
+AWS Access Key|negative|NOT_AWS_KEY_123456
+AWS Secret Key|positive|aws_secret=abcdEFGHijklMNOPqrstUVWXyz0123456789/+=
+AWS Secret Key|positive|aws_secret : ZYXWvuTSrqPOnmLKjiHGfeDCba9876543210/+=A
+AWS Secret Key|negative|aws_secret=too-short
+Generic API Key|positive|api_key = "MYCO_1234567890ABCDEFGHIJ"
+Generic API Key|positive|apikey: service-token-value-1234567890
+Generic API Key|negative|api_key = "short"
+Generic Secret|positive|password = hunter2hunter2
+Generic Secret|positive|secret: "plain-text-secret"
+Generic Secret|negative|username = normal-user
+Private RSA Key|positive|-----BEGIN RSA PRIVATE KEY-----
+Private RSA Key|positive|-----BEGIN OPENSSH PRIVATE KEY-----
+Private RSA Key|negative|-----BEGIN PUBLIC KEY-----
+JWT|positive|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payloadvalue12345.
+JWT|positive|eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.anotherpayload99.
+JWT|negative|jwt.token.example
+Database URL|positive|postgres://user:password@example.com/db
+Database URL|positive|mongodb://root:secret@localhost/admin
+Database URL|negative|postgres://example.com/db
+Slack Token|positive|xoxb-1234567890-abcdefghijklmnop
+Slack Token|positive|xoxa-ABCDEFGHIJ-123456789012345678
+Slack Token|negative|slack-token-placeholder
+GitHub Token|positive|ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD
+GitHub Token|positive|gho_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_abcd
+GitHub Token|negative|github_token=short
+Generic Bearer Token|positive|Bearer abcdefghijklmnopqrstuvwxyz123456
+Generic Bearer Token|positive|bearer ABCDEFGHIJKLMNOPQRSTUVWXYZ123456
+Generic Bearer Token|negative|Bearer short
+Google API Key|positive|AIzaSyA12345678901234567890123456789012
+Google API Key|positive|AIzaSyBabcdefghijklmnopqrstuvwxyzABCDEFGH
+Google API Key|negative|AIza-short
+Stripe Key|positive|sk_live_1234567890abcdefghijklmnop
+Stripe Key|positive|sk_test_ABCDEFGHIJKLMNOPQRSTUVWX12
+Stripe Key|negative|pk_live_1234567890abcdefghijklmnop
+Twilio Key|positive|SK0123456789abcdef0123456789ABCDEF
+Twilio Key|positive|SKabcdefabcdefabcdefabcdefabcdefab
+Twilio Key|negative|TWILIO0123456789abcdef
