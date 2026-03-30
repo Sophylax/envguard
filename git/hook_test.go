@@ -13,18 +13,20 @@ import (
 
 func TestInstallHookNonInteractiveForeignHookRequiresYes(t *testing.T) {
 	repoRoot := initTestRepo(t)
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(hookPath, []byte("#!/bin/sh\necho foreign\n"), 0o755))
 
 	var output bytes.Buffer
-	_, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Interactive: false})
+	_, err = InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Interactive: false})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "rerun with --yes")
 }
 
 func TestInstallHookForceMergesForeignHook(t *testing.T) {
 	repoRoot := initTestRepo(t)
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(hookPath, []byte("#!/bin/sh\necho foreign\n"), 0o755))
 
 	var output bytes.Buffer
@@ -44,12 +46,13 @@ func TestInstallHookForceMergesForeignHook(t *testing.T) {
 
 func TestInstallHookInteractiveDeclineKeepsForeignHook(t *testing.T) {
 	repoRoot := initTestRepo(t)
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
 	original := "#!/bin/sh\necho foreign\n"
 	require.NoError(t, os.WriteFile(hookPath, []byte(original), 0o755))
 
 	var output bytes.Buffer
-	_, err := InstallHook(repoRoot, strings.NewReader("n\n"), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Interactive: true})
+	_, err = InstallHook(repoRoot, strings.NewReader("n\n"), &output, InstallOptions{BinaryPath: "/usr/local/bin/envguard", Interactive: true})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "installation cancelled")
 
@@ -60,7 +63,8 @@ func TestInstallHookInteractiveDeclineKeepsForeignHook(t *testing.T) {
 
 func TestInstallHookOverwritesExistingEnvguardBlockWithoutDuplication(t *testing.T) {
 	repoRoot := initTestRepo(t)
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
 	existing := "#!/bin/sh\n" + buildHookScript("/old/bin/envguard") + "\n" + "echo foreign\n"
 	require.NoError(t, os.WriteFile(hookPath, []byte(existing), 0o755))
 
@@ -82,7 +86,8 @@ func TestInstallHookOverwritesExistingEnvguardBlockWithoutDuplication(t *testing
 
 func TestUninstallHookRemovesNewStyleEnvguardBlock(t *testing.T) {
 	repoRoot := initTestRepo(t)
-	hookPath := HookPath(repoRoot)
+	hookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
 	existing := "#!/bin/sh\n" + buildHookScript("/usr/local/bin/envguard") + "\n" + "echo foreign\n"
 	require.NoError(t, os.WriteFile(hookPath, []byte(existing), 0o755))
 
@@ -99,9 +104,43 @@ func TestUninstallHookRemovesNewStyleEnvguardBlock(t *testing.T) {
 	assert.Contains(t, content, "echo foreign")
 }
 
+func TestFindRepoRootSupportsDotGitFile(t *testing.T) {
+	repoRoot, gitDir := initTestRepoWithGitFile(t)
+
+	nested := filepath.Join(repoRoot, "nested", "deeper")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+
+	foundRoot, err := FindRepoRoot(nested)
+	require.NoError(t, err)
+	assert.Equal(t, repoRoot, foundRoot)
+
+	foundGitDir, err := GitDir(repoRoot)
+	require.NoError(t, err)
+	assert.Equal(t, gitDir, foundGitDir)
+}
+
+func TestHookPathSupportsDotGitFile(t *testing.T) {
+	repoRoot, gitDir := initTestRepoWithGitFile(t)
+
+	hookPath, err := HookPath(repoRoot)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(gitDir, "hooks", "pre-commit"), hookPath)
+}
+
 func initTestRepo(t *testing.T) string {
 	t.Helper()
 	repoRoot := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, ".git", "hooks"), 0o755))
 	return repoRoot
+}
+
+func initTestRepoWithGitFile(t *testing.T) (string, string) {
+	t.Helper()
+	base := t.TempDir()
+	repoRoot := filepath.Join(base, "worktree")
+	gitDir := filepath.Join(base, "actual-git-dir")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(gitDir, "hooks"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repoRoot, ".git"), []byte("gitdir: ../actual-git-dir\n"), 0o644))
+	return repoRoot, gitDir
 }

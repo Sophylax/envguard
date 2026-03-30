@@ -28,7 +28,8 @@ func TestInstallCommandYesMergesForeignHook(t *testing.T) {
 	repoRoot := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, ".git", "hooks"), 0o755))
 
-	hookPath := envgit.HookPath(repoRoot)
+	hookPath, err := envgit.HookPath(repoRoot)
+	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(hookPath, []byte("#!/bin/sh\necho foreign\n"), 0o755))
 
 	wd, err := os.Getwd()
