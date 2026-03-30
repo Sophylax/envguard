@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var envgitStagedFiles = envgit.StagedFiles
+
 func newCheckCommand() *cobra.Command {
 	var scanAll bool
 	var jsonOutput bool
@@ -43,7 +45,7 @@ func newCheckCommand() *cobra.Command {
 				return fmt.Errorf("load allowlist: %w", err)
 			}
 
-			paths, scope, err := resolveScanPaths(args, scanAll)
+			paths, scope, pathWarnings, err := resolveScanPaths(args, scanAll)
 			if err != nil {
 				return fmt.Errorf("resolve scan paths: %w", err)
 			}
@@ -68,7 +70,8 @@ func newCheckCommand() *cobra.Command {
 				if err := reporter.PrintScanHeader(cmd.OutOrStdout(), len(paths), scope); err != nil {
 					return fmt.Errorf("print header: %w", err)
 				}
-				if err := reporter.PrintWarnings(cmd.OutOrStdout(), engine.Warnings()); err != nil {
+				warnings := append(pathWarnings, engine.Warnings()...)
+				if err := reporter.PrintWarnings(cmd.OutOrStdout(), warnings); err != nil {
 					return fmt.Errorf("print warnings: %w", err)
 				}
 				if len(findings) == 0 {
@@ -98,25 +101,34 @@ func newCheckCommand() *cobra.Command {
 	return cmd
 }
 
-func resolveScanPaths(args []string, scanAll bool) ([]string, string, error) {
+func resolveScanPaths(args []string, scanAll bool) ([]string, string, []string, error) {
 	if len(args) == 1 {
-		return []string{args[0]}, "path entries", nil
+		return []string{args[0]}, "path entries", nil, nil
 	}
 	if scanAll {
-		return []string{"."}, "working tree files", nil
+		return []string{"."}, "working tree files", nil, nil
 	}
-	staged, err := envgit.StagedFiles()
+	staged, err := envgitStagedFiles()
 	if err != nil {
-		return nil, "", fmt.Errorf("list staged files: %w", err)
+		return nil, "", nil, fmt.Errorf("list staged files: %w", err)
 	}
 	if len(staged) == 0 {
-		return []string{}, "staged files", nil
+		return []string{}, "staged files", nil, nil
 	}
 	paths := make([]string, 0, len(staged))
+	warnings := make([]string, 0)
 	for _, path := range staged {
-		paths = append(paths, filepath.Clean(path))
+		cleanPath := filepath.Clean(path)
+		if _, err := os.Stat(cleanPath); err != nil {
+			if os.IsNotExist(err) {
+				warnings = append(warnings, fmt.Sprintf("skipping %s: path no longer exists", cleanPath))
+				continue
+			}
+			return nil, "", nil, fmt.Errorf("stat staged path %s: %w", cleanPath, err)
+		}
+		paths = append(paths, cleanPath)
 	}
-	return paths, "staged files", nil
+	return paths, "staged files", warnings, nil
 }
 
 func filterBySeverity(findings []scanner.Finding, severity string) []scanner.Finding {

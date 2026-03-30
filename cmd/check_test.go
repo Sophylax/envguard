@@ -65,6 +65,55 @@ func TestCheckCommandSeverityFilterAppliesToJSONOutput(t *testing.T) {
 	assert.Equal(t, "AWS Access Key", findings[0].RuleName)
 }
 
+func TestCheckCommandSkipsMissingStagedFiles(t *testing.T) {
+	tempDir := t.TempDir()
+	chdirForTest(t, tempDir)
+
+	target := filepath.Join(tempDir, "secret.js")
+	require.NoError(t, os.WriteFile(target, []byte("const key = \"AKIA1234567890ABCDEF\";\n"), 0o644))
+
+	original := envgitStagedFiles
+	envgitStagedFiles = func() ([]string, error) {
+		return []string{"deleted.txt", "secret.js"}, nil
+	}
+	t.Cleanup(func() {
+		envgitStagedFiles = original
+	})
+
+	cmd := newCheckCommand()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	output := &bytes.Buffer{}
+	cmd.SetOut(output)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	require.ErrorIs(t, err, ErrFindings)
+	assert.Contains(t, output.String(), "[envguard] scanning 1 staged files...")
+	assert.Contains(t, output.String(), "[envguard] warning: skipping deleted.txt: path no longer exists")
+	assert.Contains(t, output.String(), "AWS Access Key")
+}
+
+func TestCheckCommandExplicitMissingPathStillErrors(t *testing.T) {
+	tempDir := t.TempDir()
+	chdirForTest(t, tempDir)
+
+	missing := filepath.Join(tempDir, "missing.txt")
+
+	cmd := newCheckCommand()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{missing})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "scan paths")
+	assert.Contains(t, err.Error(), "stat path")
+}
+
 func chdirForTest(t *testing.T, dir string) {
 	t.Helper()
 	wd, err := os.Getwd()
