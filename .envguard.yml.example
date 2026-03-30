@@ -10,7 +10,6 @@ exclude_extensions:
   - ".png"
 entropy_exclude_paths:
   - "testdata/**"
-  - "fixtures/**"
 custom_patterns:
   - name: "Internal Token"
     pattern: "MYCO_[A-Z0-9]{32}"
