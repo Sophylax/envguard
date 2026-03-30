@@ -60,3 +60,47 @@ jobs:
 
       - name: Run hook smoke test
         run: .github/scripts/smoke-hook.sh
+
+  smoke-cross-platform:
+    name: Cross-Platform Smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: bin/envguard
+            build_command: go build -ldflags="-X main.version=dev" -o bin/envguard .
+            script: .github/scripts/smoke-hook.sh
+            shell: bash
+          - os: macos-latest
+            binary: bin/envguard
+            build_command: go build -ldflags="-X main.version=dev" -o bin/envguard .
+            script: .github/scripts/smoke-hook.sh
+            shell: bash
+          - os: windows-latest
+            binary: bin/envguard.exe
+            build_command: go build -ldflags='-X main.version=dev' -o bin/envguard.exe .
+            script: .github/scripts/smoke-hook.ps1
+            shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build local binary
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.build_command }}
+
+      - name: Check version output
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.binary }} version
+
+      - name: Run platform smoke test
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.script }}
