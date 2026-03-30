@@ -11,7 +11,7 @@ import (
 var version = "dev"
 
 func main() {
-	if err := cmd.Execute(version); err != nil {
+	if err := cmd.Execute(resolveVersion(version)); err != nil {
 		if !errors.Is(err, cmd.ErrFindings) {
 			fmt.Fprintln(os.Stderr, err)
 		}

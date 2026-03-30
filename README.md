@@ -138,7 +138,7 @@ Add a finding fingerprint to `.envguard-ignore` in the repository root.
 
 ### `envguard version`
 
-Print the build version injected at compile time.
+Print the resolved build or module version.
 
 ## Allowlist Workflow
 
