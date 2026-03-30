@@ -96,10 +96,6 @@ func (e *Engine) expandPaths(paths []string) ([]string, error) {
 		}
 		info, err := os.Stat(abs)
 		if err != nil {
-			if os.IsNotExist(err) {
-				e.warnings = append(e.warnings, fmt.Sprintf("skipping %s: path no longer exists", input))
-				continue
-			}
 			return nil, fmt.Errorf("stat path %s: %w", abs, err)
 		}
 		if info.IsDir() {

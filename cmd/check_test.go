@@ -86,15 +86,32 @@ func TestCheckCommandSkipsMissingStagedFiles(t *testing.T) {
 	output := &bytes.Buffer{}
 	cmd.SetOut(output)
 	cmd.SetErr(io.Discard)
-	cmd.SetArgs([]string{"--json"})
+	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	require.ErrorIs(t, err, ErrFindings)
+	assert.Contains(t, output.String(), "[envguard] scanning 1 staged files...")
+	assert.Contains(t, output.String(), "[envguard] warning: skipping deleted.txt: path no longer exists")
+	assert.Contains(t, output.String(), "AWS Access Key")
+}
 
-	var findings []scanner.Finding
-	require.NoError(t, json.Unmarshal(output.Bytes(), &findings))
-	require.Len(t, findings, 1)
-	assert.Equal(t, "AWS Access Key", findings[0].RuleName)
+func TestCheckCommandExplicitMissingPathStillErrors(t *testing.T) {
+	tempDir := t.TempDir()
+	chdirForTest(t, tempDir)
+
+	missing := filepath.Join(tempDir, "missing.txt")
+
+	cmd := newCheckCommand()
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{missing})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "scan paths")
+	assert.Contains(t, err.Error(), "stat path")
 }
 
 func chdirForTest(t *testing.T, dir string) {
