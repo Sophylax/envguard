@@ -55,6 +55,25 @@ func TestInstallHookInteractiveDeclineKeepsForeignHook(t *testing.T) {
 	assert.Equal(t, original, string(data))
 }
 
+func TestInstallHookOverwritesExistingEnvguardBlockWithoutDuplication(t *testing.T) {
+	repoRoot := initTestRepo(t)
+	hookPath := HookPath(repoRoot)
+	existing := "#!/bin/sh\n" + hookScript + "\n" + "echo foreign\n"
+	require.NoError(t, os.WriteFile(hookPath, []byte(existing), 0o755))
+
+	var output bytes.Buffer
+	installedPath, err := InstallHook(repoRoot, strings.NewReader(""), &output, InstallOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, hookPath, installedPath)
+
+	data, err := os.ReadFile(hookPath)
+	require.NoError(t, err)
+	content := string(data)
+	assert.Equal(t, 1, strings.Count(content, hookMarker))
+	assert.Contains(t, content, "envguard check")
+	assert.Contains(t, content, "echo foreign")
+}
+
 func initTestRepo(t *testing.T) string {
 	t.Helper()
 	repoRoot := t.TempDir()
