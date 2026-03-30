@@ -60,3 +60,50 @@ jobs:
 
       - name: Run hook smoke test
         run: .github/scripts/smoke-hook.sh
+
+  smoke-cross-platform:
+    name: Cross-Platform Smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build local binary on Unix
+        if: runner.os != 'Windows'
+        run: go build -ldflags="-X main.version=dev" -o bin/envguard .
+
+      - name: Build local binary on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: go build -ldflags='-X main.version=dev' -o bin/envguard.exe .
+
+      - name: Check version output on Unix
+        if: runner.os != 'Windows'
+        run: ./bin/envguard version
+
+      - name: Check version output on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\bin\envguard.exe version
+
+      - name: Run Unix smoke test
+        if: runner.os != 'Windows'
+        run: .github/scripts/smoke-hook.sh
+
+      - name: Run Windows smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .github/scripts/smoke-hook.ps1
