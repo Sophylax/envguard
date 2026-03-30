@@ -39,6 +39,7 @@ brews:
   - repository:
       owner: Sophylax
       name: homebrew-tap
+      branch: main
     homepage: https://github.com/Sophylax/envguard
     description: Zero-config pre-commit secret scanner for Git repositories.
     license: MIT
@@ -50,6 +51,7 @@ scoops:
   - repository:
       owner: Sophylax
       name: scoop-bucket
+      branch: main
     homepage: https://github.com/Sophylax/envguard
     description: Zero-config pre-commit secret scanner for Git repositories.
     license: MIT
