@@ -50,7 +50,7 @@ func newCheckCommand() *cobra.Command {
 				return fmt.Errorf("resolve scan paths: %w", err)
 			}
 
-			engine, err := scanner.NewEngine(cfg, allow)
+			engine, err := scanner.NewEngineWithRoot(cfg, allow, repoRoot)
 			if err != nil {
 				return fmt.Errorf("create scanner: %w", err)
 			}

@@ -114,6 +114,43 @@ func TestCheckCommandExplicitMissingPathStillErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "stat path")
 }
 
+func TestCheckCommandFingerprintStableAcrossWorkingDirectories(t *testing.T) {
+	repoRoot := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, ".git", "hooks"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(repoRoot, "nested"), 0o755))
+
+	target := filepath.Join(repoRoot, "secret.js")
+	require.NoError(t, os.WriteFile(target, []byte("const key = \"AKIA1234567890ABCDEF\";\n"), 0o644))
+
+	runCheck := func(t *testing.T, workdir string, arg string) scanner.Finding {
+		t.Helper()
+		chdirForTest(t, workdir)
+
+		cmd := newCheckCommand()
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+		output := &bytes.Buffer{}
+		cmd.SetOut(output)
+		cmd.SetErr(io.Discard)
+		cmd.SetArgs([]string{arg, "--json"})
+
+		err := cmd.Execute()
+		require.ErrorIs(t, err, ErrFindings)
+
+		var findings []scanner.Finding
+		require.NoError(t, json.Unmarshal(output.Bytes(), &findings))
+		require.Len(t, findings, 1)
+		return findings[0]
+	}
+
+	rootFinding := runCheck(t, repoRoot, "secret.js")
+	nestedFinding := runCheck(t, filepath.Join(repoRoot, "nested"), "../secret.js")
+
+	assert.Equal(t, "secret.js", rootFinding.File)
+	assert.Equal(t, "secret.js", nestedFinding.File)
+	assert.Equal(t, rootFinding.Fingerprint, nestedFinding.Fingerprint)
+}
+
 func chdirForTest(t *testing.T, dir string) {
 	t.Helper()
 	wd, err := os.Getwd()
