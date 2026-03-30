@@ -2,7 +2,9 @@
 
 Zero-config pre-commit secret scanning with instant local feedback.
 
-<!-- demo GIF here -->
+`envguard` installs as a local Git pre-commit hook and blocks commits that contain likely secrets before they ever leave your machine.
+
+![envguard terminal demo](assets/envguard-demo.gif)
 
 ## Install
 
@@ -13,6 +15,9 @@ brew tap Sophylax/homebrew-tap
 brew install envguard
 ```
 
+Homebrew formula:
+- https://github.com/Sophylax/homebrew-tap/blob/main/envguard.rb
+
 ### Scoop
 
 ```powershell
@@ -20,9 +25,12 @@ scoop bucket add Sophylax https://github.com/Sophylax/scoop-bucket
 scoop install envguard
 ```
 
+Scoop manifest:
+- https://github.com/Sophylax/scoop-bucket/blob/main/envguard.json
+
 ### Direct binary download
 
-Download the matching archive from [GitHub Releases](https://github.com/Sophylax/envguard/releases) and place `envguard` in your `PATH`.
+Download the matching archive for your platform from [GitHub Releases](https://github.com/Sophylax/envguard/releases), extract it, and place `envguard` in your `PATH`.
 
 ### Go install
 
@@ -36,6 +44,12 @@ go install github.com/sophylax/envguard@latest
 envguard install
 git add .
 git commit -m "ship it"
+```
+
+To install over an existing foreign pre-commit hook in automation:
+
+```bash
+envguard install --yes
 ```
 
 ## How It Works
@@ -66,8 +80,12 @@ min_length: 20
 max_file_size_kb: 500
 exclude_paths:
   - "testdata/**"
+  - "**/*.test.js"
+  - "vendor/**"
 exclude_extensions:
+  - ".lock"
   - ".png"
+  - ".svg"
 custom_patterns:
   - name: "Internal Token"
     pattern: "MYCO_[A-Z0-9]{32}"
@@ -89,6 +107,10 @@ Flags:
 Exit code:
 - `0`: clean scan.
 - `1`: findings detected.
+
+Notes:
+- when no path is provided, `envguard` scans staged files from `git diff --cached --name-only`
+- files larger than `max_file_size_kb` are skipped with a warning instead of failing the scan
 
 ### `envguard install`
 
@@ -120,6 +142,12 @@ git commit -m "allow known test secret"
 ```
 
 The `.envguard-ignore` file is newline-separated and intended to be committed so the team shares the same allowlist.
+
+## Release Channels
+
+- GitHub Releases: https://github.com/Sophylax/envguard/releases
+- Homebrew tap: https://github.com/Sophylax/homebrew-tap
+- Scoop bucket: https://github.com/Sophylax/scoop-bucket
 
 ## Comparison
 
