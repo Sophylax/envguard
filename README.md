@@ -169,6 +169,7 @@ The `.envguard-ignore` file is newline-separated and intended to be committed so
 ## Project Policies
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
+- [MAINTAINERS.md](MAINTAINERS.md)
 - [SECURITY.md](SECURITY.md)
 - [SUPPORT.md](SUPPORT.md)
 

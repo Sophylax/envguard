@@ -56,6 +56,8 @@ Each pull request should include:
 
 Keep screenshots or demo assets limited to changes that actually affect user-facing output.
 
+Maintainer-facing release and rule-update policy lives in [MAINTAINERS.md](MAINTAINERS.md).
+
 ## Scope and Support
 
 `envguard` currently targets:
