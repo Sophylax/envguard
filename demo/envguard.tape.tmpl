@@ -1,0 +1,41 @@
+Output "/vhs/assets/envguard-demo.gif"
+
+Set FontSize 20
+Set Width 1000
+Set Height 750
+Set Theme "Builtin Solarized Dark"
+Set Shell "bash"
+Set Padding 24
+Set TypingSpeed 25ms
+
+Hide
+Type "export PS1='> '"
+Enter
+Type "cd /vhs/.demo/envguard-demo"
+Enter
+Type "clear"
+Enter
+Show
+
+Type "envguard install"
+Enter
+Sleep 1500ms
+
+Type "echo 'const key = AKIA1234567890ABCDEF;' > app.js"
+Enter
+Type "git add app.js"
+Enter
+Sleep 500ms
+Type "git commit -m 'demo blocked'"
+Enter
+Sleep 4s
+
+Type "envguard allow {{FINGERPRINT}}"
+Enter
+Sleep 1500ms
+Type "git add .envguard-ignore"
+Enter
+Sleep 500ms
+Type "git commit -m 'demo allowed'"
+Enter
+Sleep 3s
