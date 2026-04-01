@@ -5,15 +5,23 @@
 [![Go Version](https://img.shields.io/badge/go-1.22%2B-00ADD8)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Zero-config pre-commit secret scanning with instant local feedback.
+You meant to commit code, not a key.
 
-`envguard` installs as a local Git pre-commit hook and blocks commits that contain likely secrets before they ever leave your machine. It is designed for fast developer-local feedback, not CI policy enforcement.
+`envguard` adds secret scanning to Git at the one moment it matters most: right before the commit leaves your machine.
+
+One command installs a local pre-commit hook that blocks likely secrets with instant feedback, no CI round-trip, no YAML tax.
 
 ![envguard terminal demo](assets/envguard-demo.gif)
 
-## Install
+## Quick Start
 
-Choose the install path that fits your environment.
+```bash
+envguard install
+git add .
+git commit -m "ship it"
+```
+
+## Install
 
 ### Homebrew
 
@@ -22,18 +30,12 @@ brew tap Sophylax/homebrew-tap
 brew install envguard
 ```
 
-Homebrew formula:
-- https://github.com/Sophylax/homebrew-tap/blob/main/envguard.rb
-
 ### Scoop
 
 ```powershell
 scoop bucket add Sophylax https://github.com/Sophylax/scoop-bucket
 scoop install envguard
 ```
-
-Scoop manifest:
-- https://github.com/Sophylax/scoop-bucket/blob/main/envguard.json
 
 ### Direct binary download
 
@@ -45,27 +47,15 @@ Download the matching archive for your platform from [GitHub Releases](https://g
 go install github.com/sophylax/envguard@latest
 ```
 
-## Quick Start
-
-```bash
-envguard install
-git add .
-git commit -m "ship it"
-```
-
-If you need to install over an existing non-envguard pre-commit hook in automation:
-
-```bash
-envguard install --yes
-```
-
 ## How It Works
 
-`envguard` runs in your local Git pre-commit hook and scans only the content relevant to your commit by default. It combines two detection engines so it catches both obvious credentials and secrets that do not follow a known vendor format.
+Most secret scanners live in CI. By then the leak already happened.
 
-The pattern engine looks for known token layouts and sensitive assignment shapes such as AWS keys, bearer tokens, Slack tokens, private keys, inline database credentials, and staged `.env` files. Built-in rules ship out of the box, and `.envguard.yml` can append custom regex patterns without changing code.
+`envguard` is built for the opposite direction: fast local feedback before the push, before the PR, before the cleanup commit.
 
-The entropy engine tokenizes each scanned line, measures Shannon entropy, and flags suspicious high-randomness values that exceed the configured threshold. This catches opaque secrets that look like random blobs, while simple heuristics suppress normal lowercase words and other low-risk text.
+The pattern engine catches known token shapes and sensitive assignment patterns such as AWS keys, bearer tokens, Slack tokens, private keys, inline database credentials, and staged `.env` files. Built-in rules work out of the box, and `.envguard.yml` can add custom regex patterns without code changes.
+
+The entropy engine catches what pattern matching misses: high-randomness strings that don't follow any vendor format.
 
 ## Config Reference
 
@@ -100,7 +90,7 @@ custom_patterns:
     severity: "HIGH"
 ```
 
-`exclude_paths` is applied before scanning starts. If a path is excluded there, `entropy_exclude_paths` never runs for it. By default, `testdata/**` stays included for pattern scanning and is excluded from entropy scanning through `entropy_exclude_paths`.
+`exclude_paths` takes priority. Paths matched there are skipped entirely, including entropy scanning.
 
 ## CLI Reference
 
@@ -142,7 +132,7 @@ Print the resolved build or module version.
 
 ## Allowlist Workflow
 
-When envguard blocks a commit, it prints a stable fingerprint for each finding. Review the finding, confirm it is a false positive or accepted fixture, then add it:
+When `envguard` blocks a commit, it prints a stable fingerprint for each finding. If the finding is a false positive or an intentional fixture, allow it explicitly:
 
 ```bash
 envguard allow a3f9c2b1d8e04f11
@@ -152,13 +142,9 @@ git commit -m "allow known test secret"
 
 The `.envguard-ignore` file is newline-separated and intended to be committed so the team shares the same allowlist.
 
-## Release Channels
-
-- GitHub Releases: https://github.com/Sophylax/envguard/releases
-- Homebrew tap: https://github.com/Sophylax/homebrew-tap
-- Scoop bucket: https://github.com/Sophylax/scoop-bucket
-
 ## Comparison
+
+If you already use Gitleaks or `git-secrets`, the useful way to think about `envguard` is not as a replacement for CI scanning, but as the fast local checkpoint that stops the mistake before CI ever has to complain.
 
 | Tool | Zero-config | Fast local pre-commit UX | Developer-local focus | CI / audit depth |
 | --- | --- | --- | --- | --- |
@@ -168,10 +154,7 @@ The `.envguard-ignore` file is newline-separated and intended to be committed so
 
 ## Project Policies
 
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [MAINTAINERS.md](MAINTAINERS.md)
-- [SECURITY.md](SECURITY.md)
-- [SUPPORT.md](SUPPORT.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [SUPPORT.md](SUPPORT.md) · [MAINTAINERS.md](MAINTAINERS.md).
 
 ## License
 
